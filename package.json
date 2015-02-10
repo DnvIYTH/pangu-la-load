@@ -1,0 +1,26 @@
+{
+  "name": "pangu-log-analyse-loader",
+  "description": "a log analyse platform. name is pangu. ",
+  "keywords": [
+    "pangu",
+    "log",
+    "analyse"
+  ],
+  "version": "0.1.0",
+  "contributors": [],
+  "engines": {
+    "node": ">=0.10.12",
+    "npm": ">=1.2.32"
+  },
+  "scripts": {
+     "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "<4.0.0",    
+    "express-partials": "latest",
+    "log4js": "0.6.13",
+    "mongoose": "latest",
+    "ejs": "latest",
+    "node-expat": "latest"
+  }
+}

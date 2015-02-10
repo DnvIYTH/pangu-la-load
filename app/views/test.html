@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+<title>测试入库</title>
+
+</head>
+
+<body >
+
+    <form action="/receive"  method="post">
+    
+        <div class="control-group">
+            <label class="control-label">data:</label>
+            <div class="controls"><input class="span12" name ="data" type="text"  value="2014-04-24 10:29:17.459 STATE [gboss.crm.trade.ITF_CRM_GetInfoCU] 18677932 SVRNAME=qcscrm1l1server;PATH=/bss/outerf/JISU;TRANSCODE=ITF_CRM_GetInfoCU;STARTTIME=2013-04-24 10:24:15;CYCLESIZE=300;CALLED=28;FAILED=0;MAX=12789;MIN=2501;AVERAGE=3853"/></div>
+        </div>
+        
+        <div class="control-group">
+            <label class="control-label">host:</label>
+            <div> <input class="span12" type="text" value="192.168.0.123" name ="localhost"/></div>
+        </div>   
+        
+        <div class="control-group">
+            <label class="control-label">type:</label>
+            <div> <input class="span12" type="text" value="TuxState" name ="type"/></div>
+        </div>    
+             
+        <div class="login-btn"><input type="submit" value="测试" /></div>
+    </form>
+
+</body>
+</html>
