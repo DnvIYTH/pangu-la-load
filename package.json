@@ -13,7 +13,7 @@
     "npm": ">=1.2.32"
   },
   "scripts": {
-     "start": "node server.js"
+     "start": "./node_modules/.bin/nodemon server.js"
   },
   "dependencies": {
     "express": "<4.0.0",    
@@ -21,6 +21,7 @@
     "log4js": "0.6.13",
     "mongoose": "latest",
     "ejs": "latest",
-    "node-expat": "latest"
+    "node-expat": "latest",
+    "nodemon": "latest"
   }
 }
