@@ -104,7 +104,7 @@ exports.LaEngine = function() {
 						var tab = db.collection(tabname),
 							tmpCount;
 						tab.count(function(err, rest){
-							tmpCount = rest;
+							tmpCount = rest || 0;
 						});
 						if (tmpCount<count) {
 							tab.insert(data.data, function(err, rest){
@@ -122,7 +122,13 @@ exports.LaEngine = function() {
 										logger.error(err);
 									}
 								});
-								target = tab.find().sort(idx).limit(1).exec();
+								target = tab.find().sort(idx).limit(1).toArray(function(err, rest){
+									if(err){
+										logger.error(err);
+									}else{
+										target = rest[0];
+									}
+								});
 								cache[tabname]=target
 							}
 							if (type.toLowerCase() == "max" && value <= target[field]) {
@@ -183,6 +189,9 @@ exports.LaEngine = function() {
 
 				var target={};
 				target = f(data.data)
+
+				//没有统计字段，不统计
+				if (target == {} ) continue;
 
 				//按小时、日、月、年统计
 				for(var i=0; i<dtList.length; ++i) {
