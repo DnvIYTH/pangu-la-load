@@ -122,7 +122,8 @@ exports.LaEngine = function() {
 										logger.error(err);
 									}
 								});
-								target = tab.find().sort(idx).limit(1).toArray(function(err, rest){
+								//target =
+								tab.find().sort(idx).limit(1).toArray(function(err, rest){
 									if(err){
 										logger.error(err);
 									}else{
