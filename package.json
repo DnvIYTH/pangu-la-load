@@ -23,6 +23,7 @@
     "ejs": "latest",
     "node-expat": "latest",
     "nodemon": "latest",
-    "node-gyp": "latest"
+    "node-gyp": "latest",
+    "async": "latest"
   }
 }

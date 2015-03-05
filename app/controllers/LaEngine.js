@@ -1,6 +1,7 @@
 var mongoose = require('mongoose'),
 	db = mongoose.connection.db;
-var logger = require('../../log').logger;
+var logger = require('../../log').logger,
+	async = require('async');
 
 exports.LaEngine = function() {
 	this.stack=[];
@@ -97,9 +98,80 @@ exports.LaEngine = function() {
 
 			if (value) {
 				for(var i=0; i<dtList.length; ++i) {
-					dt = dtList[i];
+					var dt = dtList[i];
 
-					if (~scope.toLowerCase().indexOf(dt)) {
+					async.auto({
+						step1: function(callbacks){
+							if (~scope.toLowerCase().indexOf(dt)) {
+								var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
+								callbacks(null, tabname);
+							}else{
+								callbacks('step1');
+							}
+						},
+						step2: ['step1', function(callback, results){
+							var tab = db.collection(results.step1);
+							tab.count(function(err, result){
+								if(!err && result && result < count){
+									tab.insert(data.data, function(err, rest){
+										if(!err){
+											callback('step2');
+										}
+									});
+								}else{
+									callback(null, results.step1);
+								}
+							})
+						}],
+						step3: ['step2', function(callback, results){
+							var target = cache[results.step2] || false,
+								tab = db.collection(results.step2);
+							if (!target) {
+								var idx = {};
+								idx[field] = type.toLowerCase() == "max"? 1 : -1;
+								tab.ensureIndex(idx, function(err,rest){
+									if(err){
+										callback(err);
+									}
+								});
+								tab.find().sort(idx).limit(1).toArray(function(err, rest){
+									if(err){
+										callback(err);
+									}else{
+										callback(null, rest[0]);
+									}
+								});
+							}else{
+								callback(null, target);
+							}
+						}]
+					}, function(err, results){
+						if(err && err != 'step1' && err != 'step2'){
+							logger.error(err);
+						}
+						if(!err){
+							var target = results.step3,
+								tabname = results.step1,
+								tab = db.collection(tabname);
+							if ((type.toLowerCase() == "max" && value > target[field])
+								|| (type.toLowerCase() == "min" && value < target[field])) {
+								tab.remove(target, function(err,rest){
+									if(err){
+										logger.error(err);
+									}
+								})
+								tab.insert(data.data, function(err,rest){
+									if(err){
+										logger.error(err);
+									}
+								})
+								delete cache[tabname];
+							}else{
+								cache[tabname] = results.step3;
+							}
+						}
+					});
+					/*if (~scope.toLowerCase().indexOf(dt)) {
 						var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
 						var tab = db.collection(tabname),
 							tmpCount;
@@ -151,7 +223,7 @@ exports.LaEngine = function() {
 							delete cache[tabname];
 
 						}
-					}
+					}*/
 				}
 
 			}
@@ -176,7 +248,7 @@ exports.LaEngine = function() {
 				if ('function' == typeof obj) {
 					obj = obj(data.data)
 				}else if (obj instanceof Array) {
-					arr = obj;
+					var arr = obj;
 					obj ={};
 					for(var i=0;i<arr.length;++i) {
 						obj[arr[i]] = data.data[arr[i]];
@@ -236,7 +308,7 @@ exports.LaEngine = function() {
 					if ('function' == typeof obj) {
 						obj = obj(data.data)
 					}else if (obj instanceof Array) {
-						arr = obj;
+						var arr = obj;
 						obj ={};
 						for(var i=0;i<arr.length;++i) {
 							obj[arr[i]] = data.data[arr[i]];
@@ -257,7 +329,7 @@ exports.LaEngine = function() {
 
 					//按小时、日、月、年统计
 					for(var i=0; i<dtList.length; ++i) {
-						dt = dtList[i];
+						var dt = dtList[i];
 
 						if (~scope.toLowerCase().indexOf(dt)) {
 							var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
