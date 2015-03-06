@@ -21,7 +21,7 @@ function TuxTrade4GParser(host){
         }
         obj.host = host;
         var tmpT = obj.PROCESS_TIME;
-        var time = tmpT.substring(0,4)+'-'+tmpT.substring(4,6)+'-'+tmpT.substring(6,8)+' '+tmpT.substring(8,10)+':'+tmpT.substring(10,12)+':'+tmpT.substring(12,14);
+        var time = tmpT.substr(0,4)+'-'+tmpT.substr(4,2)+'-'+tmpT.substr(6,2)+' '+tmpT.substr(8,2)+':'+tmpT.substr(10,2)+':'+tmpT.substr(12,2);
         obj.timestamp = (new Date(time)).getTime();
         data.data = obj;
         data.date = new Date(time);

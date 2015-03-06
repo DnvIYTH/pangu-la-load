@@ -112,7 +112,7 @@ exports.LaEngine = function() {
 						step2: ['step1', function(callback, results){
 							var tab = db.collection(results.step1);
 							tab.count(function(err, result){
-								if(!err && result && result < count){
+								if(!err && result < count){
 									tab.insert(data.data, function(err, rest){
 										if(!err){
 											callback('step2');
@@ -268,7 +268,7 @@ exports.LaEngine = function() {
 
 				//按小时、日、月、年统计
 				for(var i=0; i<dtList.length; ++i) {
-					dt = dtList[i];
+					var dt = dtList[i];
 
 					if (~scope.toLowerCase().indexOf(dt)) {
 						var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
