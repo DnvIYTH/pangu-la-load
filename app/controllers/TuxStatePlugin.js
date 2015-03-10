@@ -54,7 +54,7 @@ exports.TuxStateLoader = function(data, host){
 			if (data.AVERAGE>=30)
 				count["avg_gt_30s"]=data.CALLED;
 			if (data.AVERAGE>=60)
-				count["avg_gt_60s"]=data.CALLED;
+				count["avg_gt_60s"]=dtata.CALLED;
 
 			if (data.MAX>=2)
 				count["max_gt_2s"]=1;
@@ -69,36 +69,48 @@ exports.TuxStateLoader = function(data, host){
 		}, {
 			"group":function(data){return {"TRANSCODE":data.TRANSCODE, "host":data.host};}
 		},"day"))
-		.add(engine.sum("CalledSum", "CALLED",
+		.add(engine.sum("CalledSumAtServe", "CALLED",
 			{
 				//"byHostServer": ["SVRNAME", "host"],
 				//"byHostTrans": ["TRANSCODE", "host"], //暂不统计
 				"byAllServer": function(data){
 					var obj={};obj.SVRNAME=data.SVRNAME;obj.host='all';
 					return obj;
-				},
+				}
+			},
+			"day,month"))    //按小时、日、月、年分别对进程/流程的调用次数进行统计
+		.add(engine.sum("CalledSumAtTrans", "CALLED",
+			{
 				"byAllTrans": function(data) {
 					var obj={};obj.TRANSCODE = data.TRANSCODE;obj.host='all';
 					return obj;
 				}
 			},
 			"day,month"))    //按小时、日、月、年分别对进程/流程的调用次数进行统计
-		.add(engine.sum("CalledSumByTime", "CALLED",
+		.add(engine.sum("CalledSumByTimeAtAll", "CALLED",
 			{
 				"atHours" : function(data) {
 					var obj={};obj.hours = data.STARTTIME.substr(11,2);
 					return obj;
-				},
+				}
+			}, "day"))  //每天按小时统计调用数
+		.add(engine.sum("CalledSumByTimeAtHost", "CALLED",
+			{
 				"atHoursByhost" : function(data) {
 					var obj={};obj.hours = data.STARTTIME.substr(11,2);obj.host=data.host;
 					return obj;
-				},
-
+				}
+			}, "day"))  //每天按小时统计调用数
+		.add(engine.sum("CalledSumByTimeAtSvr", "CALLED",
+			{
 				"bySvrAtHours" : function(data) {
 					var obj={};obj.hours=data.STARTTIME.substr(11,2);
 					obj.SVRNAME=data.SVRNAME;
 					return obj;
-				},
+				}
+			}, "day"))  //每天按小时统计调用数
+		.add(engine.sum("CalledSumByTimeAtLcu", "CALLED",
+			{
 				"byLcuAtHours" : function(data) {
 					var obj={};obj.hours=data.STARTTIME.substr(11,2);
 					obj.TRANSCODE=data.TRANSCODE;
@@ -124,35 +136,48 @@ exports.TuxStateLoader = function(data, host){
 					return obj;
 				}
 			}, "month"))  //每月按天统计调用数
-		.add(engine.sum("FailedSum", "FAILED",
+		.add(engine.sum("FailedSumAtServe", "FAILED",
 			{
 				//						"byHostServer": ["SVRNAME", "host"],
 				//						"byHostTrans": ["TRANSCODE", "host"], //暂不统计
 				"byAllServer": function(data) {
 					var obj={};obj.SVRNAME=data.SVRNAME;obj.host='all';
 					return obj;
-				},
+				}
+			},
+			"day,month"))    //按小时、日、月、年分别对进程/流程的调用异常进行统计
+		.add(engine.sum("FailedSumAtTrans", "FAILED",
+			{
 				"byAllTrans": function(data) {
 					var obj={};obj.TRANSCODE = data.TRANSCODE;obj.host='all';
 					return obj;
 				}
 			},
 			"day,month"))    //按小时、日、月、年分别对进程/流程的调用异常进行统计
-		.add(engine.sum("FailedSumByTime", "FAILED",
+		.add(engine.sum("FailedSumByTimeAtAll", "FAILED",
 			{
 				"atHours" : function(data) {
 					var obj={};obj.hours = data.STARTTIME.substr(11,2);
 					return obj;
-				},
+				}
+			}, "day"))  //每天按小时统计调用数
+		.add(engine.sum("FailedSumByTimeAtHost", "FAILED",
+			{
 				"atHoursByHost" : function(data) {
 					var obj={};obj.hours = data.STARTTIME.substr(11,2);obj.host=data.host;
 					return obj;
-				},
+				}
+			}, "day"))  //每天按小时统计调用数
+		.add(engine.sum("FailedSumByTimeAtSvr", "FAILED",
+			{
 				"bySvrAtHours" : function(data) {
 					var obj={};obj.hours=data.STARTTIME.substr(11,2);
 					obj.SVRNAME=data.SVRNAME;
 					return obj;
-				},
+				}
+			}, "day"))  //每天按小时统计调用数
+		.add(engine.sum("FailedSumByTimeAtLcu", "FAILED",
+			{
 				"byLcuAtHours" : function(data) {
 					var obj={};obj.hours=data.STARTTIME.substr(11,2);
 					obj.TRANSCODE=data.TRANSCODE;
