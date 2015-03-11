@@ -55,19 +55,18 @@ exports.LaEngine = function() {
 				obj = fn(data.data)
 				//不符合条件，则不记录
 				if (obj==null) return next();
-				tab.insert(obj, function(err, rest){
-					if(err){
-						logger.error(err)
+				async.series([
+					function(callback){
+						tab.insert(obj, callback);
 					}
-				});
-
+				]);
 			}else{
 				//data.baseTab = tab
-				tab.insert(data.data, function(err, rest){
-					if(err){
-						logger.error(err)
+				async.series([
+					function(callback){
+						tab.insert(data.data, callback);
 					}
-				});
+				])
 			}
 
 			next();
@@ -101,75 +100,70 @@ exports.LaEngine = function() {
 					var dt = dtList[i];
 
 					async.auto({
-						step1: function(callbacks){
+						step1: function(callback){
 							if (~scope.toLowerCase().indexOf(dt)) {
-								var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
-								callbacks(null, tabname);
+								var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data),
+									tab = db.collection(tabname);
+								tab.count(function(err,result){
+									if(err){
+										callback(err)
+									}else{
+										callback(null, {tabname: tabname, count: result});
+									}
+								});
 							}else{
-								callbacks('step1');
+								callback('step1');
 							}
 						},
-						step2: ['step1', function(callback, results){
-							var tab = db.collection(results.step1);
-							tab.count(function(err, result){
-								if(!err && result < count){
-									tab.insert(data.data, function(err, rest){
-										if(!err){
-											callback('step2');
+						step2: ['step1', function(callback, result){
+							var tabname = result.step1.tabname,
+								tab = db.collection(tabname);
+							if(result.step1.count < count){
+								tab.insert(data.data, callback);
+							}else{
+								callback(null, 'continue');
+							}
+						}],
+						step3: ['step2', function(callback, result){
+							if(result.step2 == 'continue'){
+								var tabname = result.step1.tabname,
+									target = cache[tabname] || false,
+									tab = db.collection(tabname);
+								if (!target) {
+									var idx = {};
+									idx[field] = type.toLowerCase() == "max"? 1 : -1;
+									tab.ensureIndex(idx, function(err,rest){
+										if(err){
+											callback(err);
 										}
 									});
+									tab.find().sort(idx).limit(1).toArray(callback);
 								}else{
-									callback(null, results.step1);
+									callback(null, target);
 								}
-							})
-						}],
-						step3: ['step2', function(callback, results){
-							var target = cache[results.step2] || false,
-								tab = db.collection(results.step2);
-							if (!target) {
-								var idx = {};
-								idx[field] = type.toLowerCase() == "max"? 1 : -1;
-								tab.ensureIndex(idx, function(err,rest){
-									if(err){
-										callback(err);
-									}
-								});
-								tab.find().sort(idx).limit(1).toArray(function(err, rest){
-									if(err){
-										callback(err);
-									}else{
-										callback(null, rest[0]);
-									}
-								});
 							}else{
-								callback(null, target);
+								callback('step2');
 							}
-						}]
-					}, function(err, results){
-						if(err && err != 'step1' && err != 'step2'){
-							logger.error(err);
-						}
-						if(!err){
-							var target = results.step3,
-								tabname = results.step1,
+						}],
+						step4: ['step3', function(callback, results){
+							var tabname = results.step1.tabname,
+								target = results.step3[0] || results.step3,
 								tab = db.collection(tabname);
 							if ((type.toLowerCase() == "max" && value > target[field])
 								|| (type.toLowerCase() == "min" && value < target[field])) {
-								tab.remove(target, function(err,rest){
-									if(err){
-										logger.error(err);
+								async.series([
+									function(callback){
+										tab.remove(target, callback);
+									},
+									function(callback){
+										tab.insert(data.data, callback);
 									}
-								})
-								tab.insert(data.data, function(err,rest){
-									if(err){
-										logger.error(err);
-									}
-								})
+								]);
 								delete cache[tabname];
 							}else{
-								cache[tabname] = results.step3;
+								cache[tabname] = target;
 							}
-						}
+						}]
 					});
 					/*if (~scope.toLowerCase().indexOf(dt)) {
 						var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
@@ -274,11 +268,11 @@ exports.LaEngine = function() {
 						var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
 						var tab = db.collection(tabname);
 
-						tab.update(obj, target, {upsert:true}, function(err,rest){
-							if(err){
-								logger.error(err);
+						async.series([
+							function (callback) {
+								tab.update(obj, target, {upsert:true}, callback);
 							}
-						});
+						])
 					}
 				}
 			}
@@ -335,17 +329,17 @@ exports.LaEngine = function() {
 							var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
 							var tab = db.collection(tabname);
 							if (typeof count === "number") {
-								tab.update(obj, {$inc:{_count:count}}, { upsert: true }, function(err,rest){
-									if(err){
-										logger.error(err);
+								async.series([
+									function (callback) {
+										tab.update(obj, {$inc:{_count:count}}, { upsert: true }, callback);
 									}
-								});
+								])
 							}else{
-								tab.update(obj, {$inc:count}, {upsert:true}, function(err,rest){
-									if(err){
-										logger.error(err);
+								async.series([
+									function (callback) {
+										tab.update(obj, {$inc:count}, {upsert:true}, callback);
 									}
-								});
+								])
 							}
 						}
 					}
@@ -366,11 +360,11 @@ exports.LaEngine = function() {
 				if (obj) {
 					var tabname = "warning" + formatDate("YYMMDD", data);
 					var tab = db.collection(tabname);
-					tab.insert(obj, function(err,rest){
-						if(err){
-							logger.error(err);
+					async.series([
+						function (callback) {
+							tab.insert(obj, callback);
 						}
-					});
+					])
 				}
 			}
 
