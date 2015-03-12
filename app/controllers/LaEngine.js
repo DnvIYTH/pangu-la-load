@@ -55,18 +55,14 @@ exports.LaEngine = function() {
 				obj = fn(data.data)
 				//不符合条件，则不记录
 				if (obj==null) return next();
-				async.series([
-					function(callback){
-						tab.insert(obj, callback);
-					}
-				]);
+				tab.insert(obj, function (err, results) {
+					if(err){logger.error(err)}
+				});
 			}else{
 				//data.baseTab = tab
-				async.series([
-					function(callback){
-						tab.insert(data.data, callback);
-					}
-				])
+				tab.insert(data.data, function (err, results) {
+					if(err){logger.error(err)}
+				});
 			}
 
 			next();
@@ -268,11 +264,9 @@ exports.LaEngine = function() {
 						var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
 						var tab = db.collection(tabname);
 
-						async.series([
-							function (callback) {
-								tab.update(obj, target, {upsert:true}, callback);
-							}
-						])
+						tab.update(obj, target, {upsert:true}, function(err, results){
+							if(err){logger.error(err)}
+						});
 					}
 				}
 			}
@@ -329,17 +323,13 @@ exports.LaEngine = function() {
 							var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
 							var tab = db.collection(tabname);
 							if (typeof count === "number") {
-								async.series([
-									function (callback) {
-										tab.update(obj, {$inc:{_count:count}}, { upsert: true }, callback);
-									}
-								])
+								tab.update(obj, {$inc:{_count:count}}, { upsert: true }, function (err, results) {
+									if(err){logger.error(err)}
+								});
 							}else{
-								async.series([
-									function (callback) {
-										tab.update(obj, {$inc:count}, {upsert:true}, callback);
-									}
-								])
+								tab.update(obj, {$inc:count}, {upsert:true}, function (err, results) {
+									if(err){logger.error(err)}
+								});
 							}
 						}
 					}
@@ -360,11 +350,9 @@ exports.LaEngine = function() {
 				if (obj) {
 					var tabname = "warning" + formatDate("YYMMDD", data);
 					var tab = db.collection(tabname);
-					async.series([
-						function (callback) {
-							tab.insert(obj, callback);
-						}
-					])
+					tab.insert(obj, function (err, results) {
+						if(err){logger.error(err)}
+					});
 				}
 			}
 

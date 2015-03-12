@@ -4,7 +4,7 @@ var path = require('path')
 module.exports = {
   development: {
   	
-	  db: 'mongodb://localhost/tuxlog',
+	  db: 'mongodb://10.20.16.81/tuxlog',
 	  root: rootPath
 		
   }

@@ -13,7 +13,7 @@ var env = process.env.NODE_ENV || 'development'
   , mongoose = require('mongoose')
 
 // Bootstrap db connection
-mongoose.connect(config.db,{ server: { poolSize: 200 }})
+mongoose.connect(config.db,{ server: { poolSize: 20 }})
 
 
 var app = express()
