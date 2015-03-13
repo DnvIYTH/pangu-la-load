@@ -24,6 +24,7 @@
     "node-expat": "latest",
     "nodemon": "latest",
     "node-gyp": "latest",
-    "async": "latest"
+    "async": "latest",
+    "redis": "latest"
   }
 }

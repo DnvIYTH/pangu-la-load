@@ -1,7 +1,10 @@
 var mongoose = require('mongoose'),
 	db = mongoose.connection.db;
 var logger = require('../../log').logger,
-	async = require('async');
+	async = require('async'),
+	env = process.env.NODE_ENV || 'development',
+	redis = require("redis"),
+	redisCfg = require('../../config/config')[env].redis;
 
 exports.LaEngine = function() {
 	this.stack=[];
@@ -74,7 +77,7 @@ exports.LaEngine = function() {
 		type = type || "max";
 		scope = scope || "day"
 		count = count || 500
-		cache = {} //缓存，不释放
+		client = redis.createClient(redisCfg.port,redisCfg.host); //缓存，不释放
 
 		dtList = ["hours", "day", "month", "year"];
 		dtFormat = {"hours"	:	"YYMMDDHH",
@@ -120,28 +123,36 @@ exports.LaEngine = function() {
 								callback(null, 'continue');
 							}
 						}],
-						step3: ['step2', function(callback, result){
-							if(result.step2 == 'continue'){
-								var tabname = result.step1.tabname,
-									target = cache[tabname] || false,
-									tab = db.collection(tabname);
-								if (!target) {
-									var idx = {};
-									idx[field] = type.toLowerCase() == "max"? 1 : -1;
-									tab.ensureIndex(idx, function(err,rest){
-										if(err){
-											callback(err);
-										}
-									});
-									tab.find().sort(idx).limit(1).toArray(callback);
-								}else{
-									callback(null, target);
+						step3: ['step2', function (callback, result) {
+							if(result.step2 == 'continue') {
+								try {
+									client.get('top-insert-cache-' + result.step1.tabname, callback);
+								} catch (error) {
+									client.quit();
+									callback(error);
 								}
 							}else{
 								callback('step2');
 							}
 						}],
-						step4: ['step3', function(callback, results){
+						step4: ['step3', function(callback, result){
+							var tabname = result.step1.tabname,
+								target = JSON.parse(result.step3) || false,
+								tab = db.collection(tabname);
+							if (!target) {
+								var idx = {};
+								idx[field] = type.toLowerCase() == "max"? 1 : -1;
+								tab.ensureIndex(idx, function(err,rest){
+									if(err){
+										callback(err);
+									}
+								});
+								tab.find().sort(idx).limit(1).toArray(callback);
+							}else{
+								callback(null, target);
+							}
+						}],
+						step5: ['step4', function(callback, results){
 							var tabname = results.step1.tabname,
 								target = results.step3[0] || results.step3,
 								tab = db.collection(tabname);
@@ -155,65 +166,22 @@ exports.LaEngine = function() {
 										tab.insert(data.data, callback);
 									}
 								]);
-								delete cache[tabname];
+								try{
+									client.del('top-insert-cache-' + tabname, callback);
+								}catch (error){
+									client.quit();
+								}
 							}else{
-								cache[tabname] = target;
+								try {
+									client.set('top-insert-cache-' + tabname, JSON.stringify(target));
+								}catch (err){
+									client.quit();
+								}
 							}
 						}]
+					}, function(err, results){
+						client.end();
 					});
-					/*if (~scope.toLowerCase().indexOf(dt)) {
-						var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data);
-						var tab = db.collection(tabname),
-							tmpCount;
-						tab.count(function(err, rest){
-							tmpCount = rest || 0;
-						});
-						if (tmpCount<count) {
-							tab.insert(data.data, function(err, rest){
-								if(err){
-									logger.error(err)
-								}
-							});
-						}else{
-							var target = cache[tabname] || false;
-							if (!target) {
-								var idx = {};
-								idx[field] = type.toLowerCase() == "max"? 1 : -1;
-								tab.ensureIndex(idx, function(err,rest){
-									if(err){
-										logger.error(err);
-									}
-								});
-								//target =
-								tab.find().sort(idx).limit(1).toArray(function(err, rest){
-									if(err){
-										logger.error(err);
-									}else{
-										target = rest[0];
-									}
-								});
-								cache[tabname]=target
-							}
-							if (type.toLowerCase() == "max" && value <= target[field]) {
-								continue;
-							}else if (type.toLowerCase() == "min" && value >= target[field]) {
-								continue;
-							}
-							tab.remove(target, function(err,rest){
-								if(err){
-									logger.error(err);
-								}
-							})
-							tab.insert(data.data, function(err,rest){
-								if(err){
-									logger.error(err);
-								}
-							})
-
-							delete cache[tabname];
-
-						}
-					}*/
 				}
 
 			}
