@@ -8,6 +8,7 @@ var logger = require('../../log').logger,
 
 exports.LaEngine = function() {
 	this.stack=[];
+	this.client = redis.createClient(redisCfg.port,redisCfg.host); //缓存，不释放
 
 	emptyFn = function(){};
 	formatDate = function(format, data) {
@@ -77,7 +78,6 @@ exports.LaEngine = function() {
 		type = type || "max";
 		scope = scope || "day"
 		count = count || 500
-		client = redis.createClient(redisCfg.port,redisCfg.host); //缓存，不释放
 
 		dtList = ["hours", "day", "month", "year"];
 		dtFormat = {"hours"	:	"YYMMDDHH",
@@ -126,9 +126,9 @@ exports.LaEngine = function() {
 						step3: ['step2', function (callback, result) {
 							if(result.step2 == 'continue') {
 								try {
-									client.get('top-insert-cache-' + result.step1.tabname, callback);
+									this.client.get('top-insert-cache-' + result.step1.tabname, callback);
 								} catch (error) {
-									client.quit();
+									this.client.quit();
 									callback(error);
 								}
 							}else{
@@ -154,7 +154,7 @@ exports.LaEngine = function() {
 						}],
 						step5: ['step4', function(callback, results){
 							var tabname = results.step1.tabname,
-								target = results.step3[0] || results.step3,
+								target = results.step4[0] || results.step4,
 								tab = db.collection(tabname);
 							if ((type.toLowerCase() == "max" && value > target[field])
 								|| (type.toLowerCase() == "min" && value < target[field])) {
@@ -167,20 +167,20 @@ exports.LaEngine = function() {
 									}
 								]);
 								try{
-									client.del('top-insert-cache-' + tabname, callback);
+									this.client.del('top-insert-cache-' + tabname, callback);
 								}catch (error){
-									client.quit();
+									this.client.quit();
 								}
 							}else{
 								try {
-									client.set('top-insert-cache-' + tabname, JSON.stringify(target));
+									this.client.set('top-insert-cache-' + tabname, JSON.stringify(target));
 								}catch (err){
-									client.quit();
+									this.client.quit();
 								}
 							}
 						}]
 					}, function(err, results){
-						client.end();
+						this.client.quit();
 					});
 				}
 
