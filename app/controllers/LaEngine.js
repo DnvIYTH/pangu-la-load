@@ -6,9 +6,8 @@ var logger = require('../../log').logger,
 	redis = require("redis"),
 	redisCfg = require('../../config/config')[env].redis;
 
-exports.LaEngine = function() {
+exports.LaEngine = function(client) {
 	this.stack=[];
-	this.client = redis.createClient(redisCfg.port,redisCfg.host); //缓存，不释放
 
 	emptyFn = function(){};
 	formatDate = function(format, data) {
@@ -126,9 +125,9 @@ exports.LaEngine = function() {
 						step3: ['step2', function (callback, result) {
 							if(result.step2 == 'continue') {
 								try {
-									this.client.get('top-insert-cache-' + result.step1.tabname, callback);
+									client.get('top-insert-cache-' + result.step1.tabname, callback);
 								} catch (error) {
-									this.client.quit();
+									client.quit();
 									callback(error);
 								}
 							}else{
@@ -167,20 +166,18 @@ exports.LaEngine = function() {
 									}
 								]);
 								try{
-									this.client.del('top-insert-cache-' + tabname, callback);
+									client.del('top-insert-cache-' + tabname, callback);
 								}catch (error){
-									this.client.quit();
+									client.quit();
 								}
 							}else{
 								try {
-									this.client.set('top-insert-cache-' + tabname, JSON.stringify(target));
+									client.set('top-insert-cache-' + tabname, JSON.stringify(target));
 								}catch (err){
-									this.client.quit();
+									client.quit();
 								}
 							}
 						}]
-					}, function(err, results){
-						this.client.quit();
 					});
 				}
 

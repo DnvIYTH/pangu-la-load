@@ -4,9 +4,9 @@ var TuxStateLoader = require('./TuxStatePlugin').TuxStateLoader,
     TuxTrade4GLoader = require('./TuxTrade4GPlugin').TuxTrade4GLoader,
     WarningLoader = require('./Warning').WarningLoader;
 
-exports.panguLaLoad = function(type, data, host){
+exports.panguLaLoad = function(type, data, host, client){
     if( "TuxState" == type ){
-        TuxStateLoader(data, host);
+        TuxStateLoader(data, host, client);
     }
     if( "TuxMem" == type ){
         TuxMemLoader(data, host);

@@ -1,7 +1,10 @@
 var mongoose = require('mongoose'),db = mongoose.connection.db;
 var logger = require('../../log').logger;
 var parseTrans = require('./parser').parseTransByExpat,
-    panguLaLoad = require('./pangu').panguLaLoad;
+    panguLaLoad = require('./pangu').panguLaLoad,
+    env = process.env.NODE_ENV || 'development',
+    redis = require("redis"),
+    redisCfg = require('../../config/config')[env].redis;
 
 exports.receiveData = function(req, res) {
      
@@ -11,6 +14,7 @@ exports.receiveData = function(req, res) {
     var data = req.body.data;
     var host = req.body.localhost;
     var type = req.body.type;
+    var client = redis.createClient(redisCfg.port,redisCfg.host); //缓存
      
     //logger.debug("data="+data);
     logger.debug("host="+host);  
@@ -24,13 +28,13 @@ exports.receiveData = function(req, res) {
                 if( 'TuxTrade4G' == type){
                     item = parseTrans(item);
                 }
-                panguLaLoad(type, item, host);
+                panguLaLoad(type, item, host, client);
             });
         }else{
             if( 'TuxTrade4G' == type){
                 data = parseTrans(data);
             }
-            panguLaLoad(type, data, host);
+            panguLaLoad(type, data, host, client);
          }
     }
     res.send("ok");

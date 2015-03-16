@@ -34,8 +34,8 @@ function TuxStateParser(host) {
 	}
 }
 
-exports.TuxStateLoader = function(data, host){
-	var engine = new LaEngine();
+exports.TuxStateLoader = function(data, host, client){
+	var engine = new LaEngine(client);
 	engine.add(TuxStateParser(host)) //解析字串
 		//.add(engine.save("[:data.host]_YYYYMMDD"))    //分主机按天保存
 		.add(engine.save("YYYYMMDD"))    //分主机按天保存
