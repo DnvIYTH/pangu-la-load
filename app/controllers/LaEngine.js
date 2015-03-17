@@ -76,7 +76,7 @@ exports.LaEngine = function(client) {
 	this.top = function(name, field, scope, type, count, format) {
 		type = type || "max";
 		scope = scope || "day"
-		count = count || 500
+		count = count || 4
 
 		dtList = ["hours", "day", "month", "year"];
 		dtFormat = {"hours"	:	"YYMMDDHH",
@@ -148,12 +148,12 @@ exports.LaEngine = function(client) {
 								});
 								tab.find().sort(idx).limit(1).toArray(callback);
 							}else{
-								callback(null, target);
+								callback(null, {cache: 1, target:target});
 							}
 						}],
 						step5: ['step4', function(callback, results){
 							var tabname = results.step1.tabname,
-								target = results.step4[0] || results.step4,
+								target = results.step4[0] || results.step4.target,
 								tab = db.collection(tabname);
 							if ((type.toLowerCase() == "max" && value > target[field])
 								|| (type.toLowerCase() == "min" && value < target[field])) {
@@ -170,7 +170,7 @@ exports.LaEngine = function(client) {
 								}catch (error){
 									client.quit();
 								}
-							}else{
+							}else if(results.step4.cache != 1){
 								try {
 									client.set('top-insert-cache-' + tabname, JSON.stringify(target));
 								}catch (err){
@@ -178,6 +178,8 @@ exports.LaEngine = function(client) {
 								}
 							}
 						}]
+					},function(err,rest){
+						logger.debug(rest)
 					});
 				}
 
