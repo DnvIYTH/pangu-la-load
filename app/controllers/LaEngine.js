@@ -6,7 +6,7 @@ var logger = require('../../log').logger,
 	redis = require("redis"),
 	redisCfg = require('../../config/config')[env].redis;
 
-exports.LaEngine = function(client) {
+exports.LaEngine = function() {
 	this.stack=[];
 
 	emptyFn = function(){};
@@ -76,7 +76,8 @@ exports.LaEngine = function(client) {
 	this.top = function(name, field, scope, type, count, format) {
 		type = type || "max";
 		scope = scope || "day"
-		count = count || 4
+		count = count || 500;
+		var client = redis.createClient(redisCfg.port,redisCfg.host); //缓存
 
 		dtList = ["hours", "day", "month", "year"];
 		dtFormat = {"hours"	:	"YYMMDDHH",
@@ -179,7 +180,6 @@ exports.LaEngine = function(client) {
 							}
 						}]
 					},function(err,rest){
-						logger.debug(rest)
 					});
 				}
 
