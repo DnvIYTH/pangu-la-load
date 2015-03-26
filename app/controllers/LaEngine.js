@@ -31,15 +31,7 @@ exports.LaEngine = function() {
 		return format;
 	}
 
-	writeFile = function(data, callback){
-		fs.writeFile('cache', data, function(err, result){
-			if(err){
-				logger.error('writeFile Error:', err);
-			}else{
-				callback(result)
-			}
-		});
-	}
+	var array = [0,4,5,3,1,6,1,6,4,0,1,7,0,7,5,4,3,2,1,5,0,6,3,0,2,3,7,2,5,7,2,6,4,3,1,5,2,7,4,6];
 
 	//添加处理
 	this.add = function(filter, fn) {
@@ -146,7 +138,7 @@ exports.LaEngine = function() {
 											callback(err);
 										}
 									});
-									tab.find().sort(idx).limit(1).toArray(callback);
+									tab.find().sort(idx).limit(8).toArray(callback);
 								} else {
 									callback(null, target);
 								}
@@ -156,7 +148,8 @@ exports.LaEngine = function() {
 						}],
 						step4: ['step3', function(callback, results){
 							var tabname = results.step1.tabname,
-								target = results.step3[0] || results.step3,
+								index = array[Math.floor(Math.random()*40)],
+								target = results.step3[index] || results.step3,
 								tab = db.collection(tabname);
 							if ((type.toLowerCase() == "max" && value > target[field])
 								|| (type.toLowerCase() == "min" && value < target[field])) {
