@@ -2,9 +2,7 @@ var mongoose = require('mongoose'),
 	db = mongoose.connection.db;
 var logger = require('../../log').logger,
 	async = require('async'),
-	env = process.env.NODE_ENV || 'development',
-	redis = require("redis"),
-	redisCfg = require('../../config/config')[env].redis;
+	fs=require('fs');
 
 exports.LaEngine = function() {
 	this.stack=[];
@@ -31,6 +29,16 @@ exports.LaEngine = function() {
 		format = format.replace(/\./g, '_')
 
 		return format;
+	}
+
+	writeFile = function(data, callback){
+		fs.writeFile('cache', data, function(err, result){
+			if(err){
+				logger.error('writeFile Error:', err);
+			}else{
+				callback(result)
+			}
+		});
 	}
 
 	//添加处理
@@ -76,8 +84,10 @@ exports.LaEngine = function() {
 	this.top = function(name, field, scope, type, count, format) {
 		type = type || "max";
 		scope = scope || "day"
-		count = count || 500;
-		var client = redis.createClient(redisCfg.port,redisCfg.host); //缓存
+		count = count || 2;
+
+		var str = fs.readFileSync('.cache', 'utf-8') || '{}',
+			cache = JSON.parse(str) || {}; //缓存
 
 		dtList = ["hours", "day", "month", "year"];
 		dtFormat = {"hours"	:	"YYMMDDHH",
@@ -123,38 +133,30 @@ exports.LaEngine = function() {
 								callback(null, 'continue');
 							}
 						}],
-						step3: ['step2', function (callback, result) {
+						step3: ['step2', function(callback, result){
 							if(result.step2 == 'continue') {
-								try {
-									client.get('top-insert-cache-' + result.step1.tabname, callback);
-								} catch (error) {
-									client.quit();
-									callback(error);
+								var tabname = result.step1.tabname,
+									target = cache[tabname] || false,
+									tab = db.collection(tabname);
+								if (!target) {
+									var idx = {};
+									idx[field] = type.toLowerCase() == "max" ? 1 : -1;
+									tab.ensureIndex(idx, function (err, rest) {
+										if (err) {
+											callback(err);
+										}
+									});
+									tab.find().sort(idx).limit(1).toArray(callback);
+								} else {
+									callback(null, target);
 								}
 							}else{
-								callback('step2');
+								callback('step2')
 							}
 						}],
-						step4: ['step3', function(callback, result){
-							var tabname = result.step1.tabname,
-								target = JSON.parse(result.step3) || false,
-								tab = db.collection(tabname);
-							if (!target) {
-								var idx = {};
-								idx[field] = type.toLowerCase() == "max"? 1 : -1;
-								tab.ensureIndex(idx, function(err,rest){
-									if(err){
-										callback(err);
-									}
-								});
-								tab.find().sort(idx).limit(1).toArray(callback);
-							}else{
-								callback(null, {cache: 1, target:target});
-							}
-						}],
-						step5: ['step4', function(callback, results){
+						step4: ['step3', function(callback, results){
 							var tabname = results.step1.tabname,
-								target = results.step4[0] || results.step4.target,
+								target = results.step3[0] || results.step3,
 								tab = db.collection(tabname);
 							if ((type.toLowerCase() == "max" && value > target[field])
 								|| (type.toLowerCase() == "min" && value < target[field])) {
@@ -165,21 +167,17 @@ exports.LaEngine = function() {
 									function(callback){
 										tab.insert(data.data, callback);
 									}
-								]);
-								try{
-									client.del('top-insert-cache-' + tabname, callback);
-								}catch (error){
-									client.quit();
-								}
-							}else if(results.step4.cache != 1){
-								try {
-									client.set('top-insert-cache-' + tabname, JSON.stringify(target));
-								}catch (err){
-									client.quit();
-								}
+								],function(err, rest){
+									if(!err) {
+										delete cache[tabname];
+										fs.writeFileSync('.cache', JSON.stringify(cache));
+									}
+								});
+							}else if( results.step3[0] ){
+								cache[tabname] = target;
+								fs.writeFileSync('.cache', JSON.stringify(cache));
 							}
 						}]
-					},function(err,rest){
 					});
 				}
 
