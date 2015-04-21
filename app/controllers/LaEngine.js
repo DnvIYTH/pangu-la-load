@@ -104,7 +104,14 @@ exports.LaEngine = function() {
 						var tabname = data.type + name + dt.toUpperCase() + formatDate(dtFormat[dt], data),
 							adesc = type.toLowerCase() == "max" ? "desc" : "asc",
 							tmpstr = JSON.stringify(data.data),
-							tmpval = Array((11-(''+Math.floor(value)).length+1)).join(0)+value;
+							//tmpval = Array((11-(''+Math.floor(value)).length+1)).join(0)+value;
+							tmpval = "" + value,
+							len = ("" + Math.floor(value)).length;
+
+						while(len < 11){
+							tmpval = "0" + tmpval;
+							len++;
+						}
 
 						var str = tmpstr.replace('{','{"KEY":"'+tmpval+'",');
 
