@@ -1,8 +1,10 @@
 var mongoose = require('mongoose'),
-	db = mongoose.connection.db;
+	db = mongoose.connection.db,
+	env = process.env.NODE_ENV || 'development',
+	config = require('../../config/config')[env];
 var logger = require('../../log').logger,
-	async = require('async'),
-	fs=require('fs');
+	redis = require('redis'),
+	client = redis.createClient(config.redis.port,config.redis.host);
 
 exports.LaEngine = function() {
 	this.stack=[];
@@ -31,7 +33,6 @@ exports.LaEngine = function() {
 		return format;
 	}
 
-	var array = [0,4,5,3,1,6,1,6,4,0,1,7,0,7,5,4,3,2,1,5,0,6,3,0,2,3,7,2,5,7,2,6,4,3,1,5,2,7,4,6];
 
 	//添加处理
 	this.add = function(filter, fn) {
@@ -76,10 +77,8 @@ exports.LaEngine = function() {
 	this.top = function(name, field, scope, type, count, format) {
 		type = type || "max";
 		scope = scope || "day"
-		count = count || 2;
+		count = count || 500;
 
-		var str = fs.readFileSync('.cache', 'utf-8') || '{}',
-			cache = JSON.parse(str) || {}; //缓存
 
 		dtList = ["hours", "day", "month", "year"];
 		dtFormat = {"hours"	:	"YYMMDDHH",
@@ -98,80 +97,28 @@ exports.LaEngine = function() {
 
 			if (value) {
 				for(var i=0; i<dtList.length; ++i) {
-					var dt = dtList[i];
+					var dt = dtList[i],
+						multi = client.multi();
 
-					async.auto({
-						step1: function(callback){
-							if (~scope.toLowerCase().indexOf(dt)) {
-								var tabname = data.type+name+dt.toUpperCase()+formatDate(dtFormat[dt], data),
-									tab = db.collection(tabname);
-								tab.count(function(err,result){
-									if(err){
-										callback(err)
-									}else{
-										callback(null, {tabname: tabname, count: result});
-									}
-								});
+					if (~scope.toLowerCase().indexOf(dt)) {
+						var tabname = data.type + name + dt.toUpperCase() + formatDate(dtFormat[dt], data),
+							adesc = type.toLowerCase() == "max" ? "desc" : "asc",
+							tmpstr = JSON.stringify(data.data),
+							tmpval = Array((11-(''+Math.floor(value)).length+1)).join(0)+value;
+
+						var str = tmpstr.replace('{','{"KEY":"'+tmpval+'",');
+
+						multi.rpush([tabname, str], redis.print);
+						multi.sort([tabname, 'limit', 0, count, adesc, 'alpha', 'store', tabname], redis.print);
+						multi.exec(function(err,rest){
+							if(err){
+								logger.error(err);
 							}else{
-								callback('step1');
+								logger.debug(rest);
 							}
-						},
-						step2: ['step1', function(callback, result){
-							var tabname = result.step1.tabname,
-								tab = db.collection(tabname);
-							if(result.step1.count < count){
-								tab.insert(data.data, callback);
-							}else{
-								callback(null, 'continue');
-							}
-						}],
-						step3: ['step2', function(callback, result){
-							if(result.step2 == 'continue') {
-								var tabname = result.step1.tabname,
-									target = cache[tabname] || false,
-									tab = db.collection(tabname);
-								if (!target) {
-									var idx = {};
-									idx[field] = type.toLowerCase() == "max" ? 1 : -1;
-									tab.ensureIndex(idx, function (err, rest) {
-										if (err) {
-											callback(err);
-										}
-									});
-									tab.find().sort(idx).limit(8).toArray(callback);
-								} else {
-									callback(null, target);
-								}
-							}else{
-								callback('step2')
-							}
-						}],
-						step4: ['step3', function(callback, results){
-							var tabname = results.step1.tabname,
-								index = array[Math.floor(Math.random()*40)],
-								target = results.step3[index] || results.step3,
-								tab = db.collection(tabname);
-							if ((type.toLowerCase() == "max" && value > target[field])
-								|| (type.toLowerCase() == "min" && value < target[field])) {
-								async.series([
-									function(callback){
-										tab.remove(target, callback);
-									},
-									function(callback){
-										tab.insert(data.data, callback);
-									}
-								],function(err, rest){
-									if(!err) {
-										delete cache[tabname];
-										fs.writeFileSync('.cache', JSON.stringify(cache));
-									}
-								});
-							}else if( results.step3[0] ){
-								cache[tabname] = target;
-								fs.writeFileSync('.cache', JSON.stringify(cache));
-							}
-						}]
-					});
+						});
+
+					}
 				}
 
 			}
