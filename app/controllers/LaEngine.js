@@ -101,30 +101,13 @@ exports.LaEngine = function() {
 						multi = client.multi();
 
 					if (~scope.toLowerCase().indexOf(dt)) {
-						var tabname = data.type + name + dt.toUpperCase() + formatDate(dtFormat[dt], data),
-							adesc = type.toLowerCase() == "max" ? "desc" : "asc",
-							tmpstr = JSON.stringify(data.data),
-							//tmpval = Array((11-(''+Math.floor(value)).length+1)).join(0)+value;
-							tmpval = "" + value,
-							len = ("" + Math.floor(value)).length;
-
-						while(len < 11){
-							tmpval = "0" + tmpval;
-							len++;
-						}
-
-						var str = tmpstr.replace('{','{"KEY":"'+tmpval+'",');
-
-						multi.rpush([tabname, str], redis.print);
-						multi.sort([tabname, 'limit', 0, count, adesc, 'alpha', 'store', tabname], redis.print);
-						multi.exec(function(err,rest){
-							if(err){
-								logger.error(err);
-							}else{
-								logger.debug(rest);
-							}
-						});
-
+						var tabname = data.type + name + dt.toUpperCase() + formatDate(dtFormat[dt], data);
+                        client.zadd([tabname, value, JSON.stringify(data.data)], redis.print);
+                        if ("max" == type.toLowerCase()){
+                            client.zremrangebyrank([tabname, 0, -count-1], redis.print);
+                        } else {
+                            client.zremrangebyrank([tabname, count, -1], redis.print);
+                        }
 					}
 				}
 

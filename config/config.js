@@ -4,10 +4,10 @@ var path = require('path')
 module.exports = {
   development: {
   	
-	  db: 'mongodb://10.20.16.81/tuxlog',
+                   db: 'mongodb://localhost:27017/tuxlog',
 	  root: rootPath,
       redis: {
-          host:'10.20.16.79',
+          host:'localhost',
           port:'6379'
       }
   }
