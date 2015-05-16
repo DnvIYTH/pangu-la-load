@@ -1,5 +1,6 @@
 var LaEngine = require('./LaEngine').LaEngine,
-	logger = require('../../log').logger;
+	logger = require('../../log').logger,
+    mcache = require('./cache');
 
 function TuxLcuPointParser(host) {
 	return function(data,next) {
@@ -12,11 +13,19 @@ function TuxLcuPointParser(host) {
             obj.TRANSCODE = RegExp.$2
             obj.content = RegExp.$4
 			obj.timestamp = (new Date(obj.TIME)).getTime();
+            
+            if(null == mcache.get('LP_'+obj.PID+host+obj.TRANSCODE)){
 
-			data.data = obj
-			data.date = obj.TIME
+                obj.timediff = 0;
+            }else{
+                obj.timediff = obj.timestamp - mcache.get('LP_'+obj.PID+host+obj.TRANSCODE);
+            }
+            mcache.set('LP_'+obj.PID+host+obj.TRANSCODE, obj.timestamp);
+//            console.log(mcache.len())
+            data.data = obj
+            data.date = obj.timestamp
 
-			next();
+            next();
 		}else{
 			next(new Error("error format."));
 		}
